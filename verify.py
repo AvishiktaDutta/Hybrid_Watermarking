@@ -1,43 +1,50 @@
-from skimage.metrics import peak_signal_noise_ratio as psnr
-from skimage.metrics import structural_similarity as ssim
 import cv2
 import numpy as np
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
-# Load the original and extracted watermarks as grayscale
-original_img = cv2.imread("watermark.png", cv2.IMREAD_GRAYSCALE)
-extracted_img = cv2.imread("extracted_watermark.png", cv2.IMREAD_GRAYSCALE)
+# LOAD IMAGES
+orig = cv2.imread("boat.png", cv2.IMREAD_GRAYSCALE)
+watermarked = cv2.imread("watermarked.png", cv2.IMREAD_GRAYSCALE)
+rest = cv2.imread("restored_host.png", cv2.IMREAD_GRAYSCALE)
 
-# Resize original to 128x128 if needed (same as in embed.py)
-if original_img.shape != (128, 128):
-    original_img = cv2.resize(original_img, (128, 128))
+wm_o = cv2.imread("watermark.png", cv2.IMREAD_GRAYSCALE)
+wm_e = cv2.imread("extracted_watermark.png", cv2.IMREAD_GRAYSCALE)
 
-# Threshold both to binary (0/1) for fair comparison (same threshold as embed.py)
-original_bin = cv2.threshold(original_img, 127, 1, cv2.THRESH_BINARY)[1]
-extracted_bin = cv2.threshold(extracted_img, 127, 1, cv2.THRESH_BINARY)[1]
+#CHECK LOADING
+if orig is None or watermarked is None or rest is None:
+    raise FileNotFoundError("Host or watermarked images not found")
 
-# Convert to uint8 for PSNR calculation (0-255 range)
-original_bin_255 = original_bin.astype(np.uint8) * 255
-extracted_bin_255 = extracted_bin.astype(np.uint8) * 255
+if wm_o is None or wm_e is None:
+    raise FileNotFoundError("Watermark images not found")
 
-# Calculate MSE
-mse = np.mean((original_bin_255.astype(np.float64) - extracted_bin_255.astype(np.float64)) ** 2)
+#  PREPROCESS WATERMARKS
+wm_o = cv2.resize(wm_o, wm_e.shape[::-1])
+wm_o = (wm_o > 127).astype(np.uint8)
+wm_e = (wm_e > 127).astype(np.uint8)
 
-# Calculate PSNR
-if mse == 0:
-    psnr_score = float('inf')
-    print(f"PSNR Score: Infinity dB (MSE = 0)")
+ # REVERSIBILITY CHECK 
+""" host_identical = np.array_equal(orig, rest)
+wm_identical = np.array_equal(wm_o, wm_e)
+
+print("Host identical after extraction:", host_identical)
+print("Watermark identical after extraction:", wm_identical)
+
+# ---------------- PSNR (HOST RESTORATION) ----------------
+if host_identical:
+    print("Restored Host PSNR: Infinity (Perfect restoration)")
 else:
-    psnr_score = psnr(original_bin_255, extracted_bin_255)
-    print(f"PSNR Score: {psnr_score:.4f} dB")
-    print(f"MSE: {mse:.10f}")
+    psnr_restore = peak_signal_noise_ratio(orig, rest)
+    print("Restored Host PSNR:", psnr_restore) """
 
-# Calculate SSIM
-ssim_score = ssim(original_bin_255, extracted_bin_255)
-print(f"SSIM Score: {ssim_score:.4f}")
+psnr_host = peak_signal_noise_ratio(orig, watermarked)
+ssim_host = structural_similarity(orig, watermarked)
 
-# Verify perfect match
-if np.array_equal(original_bin, extracted_bin):
-    print("Perfect match: All pixels are identical!")
-else:
-    diff_count = np.sum(original_bin != extracted_bin)
-    print(f"Warning: {diff_count} pixels differ")
+psnr_watermark = peak_signal_noise_ratio(wm_o, wm_e)
+ssim_watermark = structural_similarity(wm_o, wm_e)
+
+print("\nImperceptibility Analysis (Host vs Watermarked)")
+print("PSNR:", psnr_host)
+print("SSIM:", ssim_host)
+print("\nImperceptibility Analysis (Watermark vs Extracted watermark)")
+print("PSNR:", psnr_watermark)
+print("SSIM:", ssim_watermark)
