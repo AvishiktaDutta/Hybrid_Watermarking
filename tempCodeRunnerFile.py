@@ -1,1 +1,1 @@
-storation PSNR: Infinity
+restored_host.

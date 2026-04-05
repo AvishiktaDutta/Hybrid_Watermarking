@@ -1,10 +1,9 @@
 import cv2
 import numpy as np
 
-ARNOLD_ITERS = 10    
-WM_SIZE = 128
+arnold_key = 10    
+watermark_size = 128
 
-# INVERSE ARNOLD 
 def inverse_arnold_map(img, iters):
     n = img.shape[0]
     out = img.copy()
@@ -18,7 +17,6 @@ def inverse_arnold_map(img, iters):
         out = temp
     return out
 
-#LOAD WATERMARKED IMAGE 
 wm_img = cv2.imread("watermarked.png", cv2.IMREAD_GRAYSCALE)
 wm_img = wm_img.astype(np.int32)
 h, w = wm_img.shape
@@ -32,7 +30,6 @@ bits = []
 lm_idx = 0
 bit_idx = 0
 
-#  DIFFERENCE EXPANSION EXTRACTION
 for i in range(0, h, 2):
     for j in range(0, w - 1, 2):
 
@@ -64,12 +61,10 @@ for i in range(0, h, 2):
         restored[i, j]   = x_orig
         restored[i, j+1] = y_orig
 
-# WATERMARK RECOVERY 
 bits = np.array(bits, dtype=np.uint8)
-wm_scrambled = bits[:WM_SIZE*WM_SIZE].reshape((WM_SIZE, WM_SIZE)) * 255
-
-# Apply inverse Arnold
-wm_final = inverse_arnold_map(wm_scrambled.astype(np.uint8), ARNOLD_ITERS)
+wm_scrambled = bits[:watermark_size*watermark_size].reshape((watermark_size, watermark_size)) * 255
+wm_final = inverse_arnold_map(wm_scrambled.astype(np.uint8),
+arnold_key)
 
 cv2.imwrite("restored_host.png", restored.astype(np.uint8))
 cv2.imwrite("extracted_watermark.png", wm_final)
